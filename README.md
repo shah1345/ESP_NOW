@@ -59,3 +59,50 @@
   }
 }
 
+
+
+
+
+
+
+
+
+
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  memcpy(&receivedData, incomingData, sizeof(receivedData));
+  memcpy(senderMac, mac, 6);
+
+  Serial.println("Data received:");
+  Serial.print("RF Tag: "); Serial.println(receivedData.rf_tag);
+  Serial.print("Nozzle: "); Serial.println(receivedData.nozzle_no);
+  Serial.print("Time: "); Serial.println(receivedData.time_str);
+
+  // Always use WiFi.channel() after WiFi is connected
+  if (!esp_now_is_peer_exist(mac)) {
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, mac, 6);
+    peerInfo.channel = WiFi.channel(); // ← This must be correct
+    peerInfo.encrypt = false;
+
+    esp_err_t res = esp_now_add_peer(&peerInfo);
+    if (res != ESP_OK) {
+      Serial.println("Failed to add peer for response!");
+      return;
+    }
+  }
+
+  replyData.status = true;
+  snprintf(replyData.message, sizeof(replyData.message), "Approved Nozzle %d", receivedData.nozzle_no);
+
+  esp_err_t result = esp_now_send(mac, (uint8_t *)&replyData, sizeof(replyData));
+  Serial.print("Response send result: ");
+  Serial.println(result == ESP_OK ? "OK" : "Failed");
+}
+
+
+
+
+
+
+
+
